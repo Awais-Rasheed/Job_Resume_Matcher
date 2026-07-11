@@ -139,3 +139,42 @@ def _build_summary(score: float, gaps: list[dict]) -> str:
 
     top_terms = ", ".join(g["term"] for g in gaps[:5])
     return f"{band}. Consider addressing these gaps: {top_terms}."
+
+
+def parse_pdf(file_bytes: bytes) -> str:
+    """
+    Extracts text from PDF bytes.
+    """
+    import io
+    from pypdf import PdfReader
+    try:
+        reader = PdfReader(io.BytesIO(file_bytes))
+        text = ""
+        for page in reader.pages:
+            extracted = page.extract_text()
+            if extracted:
+                text += extracted + "\n"
+        return text.strip()
+    except Exception as e:
+        raise ValueError(f"Error parsing PDF file: {str(e)}")
+
+
+def parse_docx(file_bytes: bytes) -> str:
+    """
+    Extracts text from DOCX bytes.
+    """
+    import io
+    import docx
+    try:
+        doc = docx.Document(io.BytesIO(file_bytes))
+        paragraphs = [p.text for p in doc.paragraphs]
+        table_text = []
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    table_text.append(cell.text)
+        combined_text = "\n".join(paragraphs + table_text)
+        return combined_text.strip()
+    except Exception as e:
+        raise ValueError(f"Error parsing DOCX file: {str(e)}")
+

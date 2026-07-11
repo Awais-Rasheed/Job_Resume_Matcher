@@ -7,11 +7,11 @@ Run locally with:
 Then the frontend (see ../frontend) talks to http://localhost:8000
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from matcher import match
+from matcher import match, parse_pdf, parse_docx
 
 app = FastAPI(
     title="Resume-Job Matcher API",
@@ -46,9 +46,49 @@ def health():
 
 
 @app.post("/match", response_model=MatchResponse)
-def match_resume(payload: MatchRequest):
-    if not payload.resume_text.strip() or not payload.job_text.strip():
-        raise HTTPException(status_code=400, detail="Both resume_text and job_text are required.")
+def match_resume(
+    resume_file: UploadFile = File(None),
+    resume_text: str = Form(None),
+    job_text: str = Form(...)
+):
+    extracted_resume_text = ""
 
-    result = match(payload.resume_text, payload.job_text)
+    if resume_file is not None and resume_file.filename:
+        filename = resume_file.filename.lower()
+        try:
+            content = resume_file.file.read()
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Failed to read uploaded file: {str(e)}")
+
+        if filename.endswith(".pdf"):
+            try:
+                extracted_resume_text = parse_pdf(content)
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=str(e))
+        elif filename.endswith(".docx"):
+            try:
+                extracted_resume_text = parse_docx(content)
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=str(e))
+        elif filename.endswith(".txt"):
+            try:
+                extracted_resume_text = content.decode("utf-8")
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"Failed to decode text file: {str(e)}")
+        else:
+            raise HTTPException(status_code=400, detail="Unsupported file format. Please upload PDF, DOCX, or TXT.")
+    elif resume_text:
+        extracted_resume_text = resume_text
+
+    if not extracted_resume_text.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Resume content is required. Please upload a PDF/DOCX file or paste text."
+        )
+
+    if not job_text.strip():
+        raise HTTPException(status_code=400, detail="Job description text is required.")
+
+    result = match(extracted_resume_text, job_text)
     return result
+
