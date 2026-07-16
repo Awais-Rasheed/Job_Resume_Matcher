@@ -1,6 +1,7 @@
 import { useState } from "react";
 
-const API_URL = "http://localhost:8000";
+const API_URL = import.meta.env.VITE_API_URL;
+
 
 function ScoreGauge({ score }) {
   // Semicircle gauge: 0-100 mapped across 180 degrees.
