@@ -22,7 +22,7 @@ app = FastAPI(
 # Allow the local React dev server to call this API from the browser.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://job-resume-matcher-eta.vercel.app/"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
